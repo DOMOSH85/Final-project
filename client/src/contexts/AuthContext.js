@@ -81,6 +81,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     setUser(null);
     setError(null);
+    window.location.href = '/login'; // Force redirect for all roles
   };
 
   const updateProfile = async (profileData) => {

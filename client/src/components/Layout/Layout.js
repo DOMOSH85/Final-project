@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import Footer from './Footer';
 
 const Layout = () => {
   const { user, loading } = useAuth();
@@ -56,6 +57,7 @@ const Layout = () => {
             <Outlet />
           </div>
         </main>
+        <Footer />
       </div>
     </div>
   );

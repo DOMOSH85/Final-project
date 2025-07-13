@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { useAuth } from './AuthContext';
 
 const DataContext = createContext();
 
@@ -132,6 +133,7 @@ export const useData = () => {
 };
 
 export const DataProvider = ({ children }) => {
+  const { user } = useAuth();
   const [landData, setLandData] = useState([]);
   const [farmerData, setFarmerData] = useState([]);
   const [governmentData, setGovernmentData] = useState([]);
@@ -139,13 +141,15 @@ export const DataProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Fetch all data from backend on mount
   useEffect(() => {
-    // Load mock data on component mount
-    setLandData(mockLandData);
-    setFarmerData(mockFarmerData);
-    setGovernmentData(mockGovernmentData);
-    setAnalyticsData(mockAnalyticsData);
-  }, []); // Empty dependency array since mock data is now static
+    if (user) {
+      fetchLandData();
+      fetchFarmerData();
+      fetchGovernmentData();
+      fetchAnalyticsData();
+    }
+  }, [user]);
 
   const fetchLandData = async () => {
     try {
@@ -174,6 +178,23 @@ export const DataProvider = ({ children }) => {
     } catch (error) {
       setError('Failed to fetch farmer data');
       console.error('Error fetching farmer data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add government data fetcher
+  const fetchGovernmentData = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get('/api/government', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setGovernmentData(response.data);
+    } catch (error) {
+      setError('Failed to fetch government data');
+      console.error('Error fetching government data:', error);
     } finally {
       setLoading(false);
     }
