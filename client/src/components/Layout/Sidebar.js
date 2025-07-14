@@ -50,7 +50,7 @@ const mockNotifications = [
 ];
 
 const Sidebar = ({ open, setOpen }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, hasRole } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [notifications, setNotifications] = useState(mockNotifications);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -74,13 +74,17 @@ const Sidebar = ({ open, setOpen }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showNotifications]);
 
+  // Navigation with role restrictions
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: HomeIcon },
-    { name: 'Land Mapping', href: '/land-mapping', icon: MapIcon },
-    { name: 'Farmer Portal', href: '/farmer-portal', icon: UserGroupIcon },
-    { name: 'Government', href: '/government', icon: BuildingOfficeIcon },
-    { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
-    { name: 'Communication', href: '/communication', icon: ChatBubbleLeftRightIcon },
+    { name: 'Dashboard', href: '/', icon: HomeIcon, roles: ['farmer', 'government', 'admin', 'analyst'] },
+    { name: 'Farmer Portal', href: '/farmer-portal', icon: UserGroupIcon, roles: ['farmer'] },
+    { name: 'Government Portal', href: '/government-portal', icon: BuildingOfficeIcon, roles: ['government'] },
+    { name: 'Analyst Portal', href: '/analyst-portal', icon: ChartBarIcon, roles: ['analyst'] },
+    { name: 'Admin Portal', href: '/admin-portal', icon: Cog6ToothIcon, roles: ['admin'] },
+    { name: 'Land Mapping', href: '/land-mapping', icon: MapIcon, roles: ['farmer', 'government', 'admin'] },
+    { name: 'Government', href: '/government', icon: BuildingOfficeIcon, roles: ['government', 'admin'] },
+    { name: 'Analytics', href: '/analytics', icon: ChartBarIcon, roles: ['analyst', 'government', 'admin', 'farmer'] },
+    { name: 'Communication', href: '/communication', icon: ChatBubbleLeftRightIcon, roles: ['farmer', 'government', 'admin', 'analyst'] },
   ];
 
   const handleLogout = () => {
@@ -127,7 +131,7 @@ const Sidebar = ({ open, setOpen }) => {
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2">
             <div className="text-xs font-semibold text-green-700 uppercase tracking-wider mb-2 pl-2">Navigation</div>
-            {navigation.map((item) => (
+            {navigation.filter(item => hasRole && hasRole(item.roles)).map((item) => (
               <NavLink
                 key={item.name}
                 to={item.href}
@@ -203,7 +207,7 @@ const Sidebar = ({ open, setOpen }) => {
           {/* Navigation */}
           <nav className="flex-1 px-2 py-6 space-y-2">
             <div className={`text-xs font-semibold text-green-700 uppercase tracking-wider mb-2 pl-2 ${collapsed ? 'hidden' : ''}`}>Navigation</div>
-            {navigation.map((item) => (
+            {navigation.filter(item => hasRole && hasRole(item.roles)).map((item) => (
               <NavLink
                 key={item.name}
                 to={item.href}

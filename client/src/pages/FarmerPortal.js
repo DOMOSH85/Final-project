@@ -14,13 +14,29 @@ import {
   EyeIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  InformationCircleIcon
+  InformationCircleIcon,
+  SparklesIcon,
+  BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
+import * as Dialog from '@radix-ui/react-dialog';
 
 const FarmerPortal = () => {
   const { user } = useAuth();
-  const { addLandRecord } = useData();
+  const {
+    landData,
+    analyticsData,
+    fetchCrops,
+    addCrop,
+    deleteCrop,
+    fetchEquipment,
+    addEquipment,
+    fetchResources,
+    loading,
+    error,
+    fetchFinancialReport
+  } = useData();
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddCrop, setShowAddCrop] = useState(false);
   const [showAddEquipment, setShowAddEquipment] = useState(false);
@@ -40,6 +56,18 @@ const FarmerPortal = () => {
     maintenanceDate: '',
     status: 'active'
   });
+  // Farmer-specific data
+  const myLand = landData.filter(l => l.farmer && (l.farmer._id === user.id || l.farmer === user.id));
+  const myLandArea = myLand.reduce((sum, l) => sum + (l.area || 0), 0);
+  const [crops, setCrops] = useState([]);
+  const [equipment, setEquipment] = useState([]);
+  const [resources, setResources] = useState([]);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [financialReport, setFinancialReport] = useState(null);
+  const [financialLoading, setFinancialLoading] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [supportForm, setSupportForm] = useState({ subject: '', message: '' });
+  const [supportLoading, setSupportLoading] = useState(false);
 
   // Mock weather data
   useEffect(() => {
@@ -56,45 +84,103 @@ const FarmerPortal = () => {
     });
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      setDataLoading(true);
+      Promise.all([
+        fetchCrops(user.id),
+        fetchEquipment(user.id),
+        fetchResources()
+      ]).then(([cropsData, equipmentData, resourcesData]) => {
+        setCrops(cropsData);
+        setEquipment(equipmentData);
+        setResources(resourcesData);
+        setDataLoading(false);
+      });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (activeTab === 'finance' && user) {
+      setFinancialLoading(true);
+      fetchFinancialReport().then((data) => {
+        setFinancialReport(data);
+        setFinancialLoading(false);
+      });
+    }
+  }, [activeTab, user]);
+
   const handleCropSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const newCrop = {
-        ...cropForm,
-        id: Date.now(),
-        farmerId: user.id,
-        status: 'active',
-        createdAt: new Date().toISOString()
-      };
-      
-      await addLandRecord(newCrop);
-      setCropForm({
-        name: '',
-        area: '',
-        cropType: '',
-        plantingDate: '',
-        expectedHarvest: '',
-        notes: ''
-      });
+    if (!cropForm.name) return toast.error('Crop name is required');
+    setDataLoading(true);
+    const result = await addCrop(user.id, cropForm.name);
+    if (result.success) {
+      const updatedCrops = await fetchCrops(user.id);
+      setCrops(updatedCrops);
       setShowAddCrop(false);
+      setCropForm({ name: '', area: '', cropType: '', plantingDate: '', expectedHarvest: '', notes: '' });
       toast.success('Crop added successfully!');
-    } catch (error) {
-      toast.error('Failed to add crop');
+    } else {
+      toast.error(result.error || 'Failed to add crop');
     }
+    setDataLoading(false);
   };
 
-  const handleEquipmentSubmit = (e) => {
+  const handleDeleteCrop = async (cropName) => {
+    setDataLoading(true);
+    const result = await deleteCrop(user.id, cropName);
+    if (result.success) {
+      const updatedCrops = await fetchCrops(user.id);
+      setCrops(updatedCrops);
+      toast.success('Crop deleted successfully!');
+    } else {
+      toast.error(result.error || 'Failed to delete crop');
+    }
+    setDataLoading(false);
+  };
+
+  const handleEquipmentSubmit = async (e) => {
     e.preventDefault();
-    // Mock equipment addition
-    toast.success('Equipment added successfully!');
-    setEquipmentForm({
-      name: '',
-      type: '',
-      purchaseDate: '',
-      maintenanceDate: '',
-      status: 'active'
-    });
-    setShowAddEquipment(false);
+    if (!equipmentForm.name) return toast.error('Equipment name is required');
+    setDataLoading(true);
+    const result = await addEquipment(user.id, equipmentForm.name);
+    if (result.success) {
+      const updatedEquipment = await fetchEquipment(user.id);
+      setEquipment(updatedEquipment);
+      setShowAddEquipment(false);
+      setEquipmentForm({ name: '', type: '', purchaseDate: '', maintenanceDate: '', status: 'active' });
+      toast.success('Equipment added successfully!');
+    } else {
+      toast.error(result.error || 'Failed to add equipment');
+    }
+    setDataLoading(false);
+  };
+
+  const handleSupportChange = (e) => {
+    setSupportForm({ ...supportForm, [e.target.name]: e.target.value });
+  };
+
+  const handleSupportSubmit = async (e) => {
+    e.preventDefault();
+    setSupportLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      await fetch('/api/communication/support', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(supportForm)
+      });
+      toast.success('Support request sent!');
+      setSupportForm({ subject: '', message: '' });
+      setSupportOpen(false);
+    } catch (err) {
+      toast.error('Failed to send support request');
+    }
+    setSupportLoading(false);
   };
 
   const mockCrops = [
@@ -172,13 +258,13 @@ const FarmerPortal = () => {
     },
     {
       name: 'Active Crops',
-      value: mockCrops.length,
+      value: crops.length,
       icon: ChartBarIcon,
       color: 'bg-blue-500'
     },
     {
       name: 'Equipment Count',
-      value: mockEquipment.length,
+      value: equipment.length,
       icon: CogIcon,
       color: 'bg-purple-500'
     },
@@ -200,61 +286,151 @@ const FarmerPortal = () => {
         </div>
         <div className="flex items-center space-x-2">
           <span className="text-sm text-gray-500">Last updated: {new Date().toLocaleDateString()}</span>
+          <button
+            className="btn-secondary ml-2"
+            onClick={() => setSupportOpen(true)}
+          >
+            Help & Support
+          </button>
         </div>
       </div>
 
+      {/* Farmer Dashboard Features */}
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => (
-          <div key={stat.name} className="card-hover">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-              </div>
-              <div className={`p-3 rounded-lg ${stat.color}`}>
-                <stat.icon className="w-6 h-6 text-white" />
-              </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div className="card-hover">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">My Land Area</p>
+              <p className="text-2xl font-bold text-gray-900">{myLandArea} acres</p>
             </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Weather Widget */}
-      {weatherData && (
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Weather Information</h3>
-            <CloudIcon className="w-6 h-6 text-blue-500" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600">{weatherData.temperature}°C</div>
-              <div className="text-sm text-gray-600">Current Temperature</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-green-600">{weatherData.humidity}%</div>
-              <div className="text-sm text-gray-600">Humidity</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-purple-600">{weatherData.windSpeed} km/h</div>
-              <div className="text-sm text-gray-600">Wind Speed</div>
-            </div>
-          </div>
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <h4 className="font-medium text-gray-900 mb-2">3-Day Forecast</h4>
-            <div className="grid grid-cols-3 gap-4">
-              {weatherData.forecast.map((day, index) => (
-                <div key={index} className="text-center">
-                  <div className="text-sm font-medium text-gray-900">{day.day}</div>
-                  <div className="text-lg font-bold text-gray-700">{day.temp}°C</div>
-                  <div className="text-xs text-gray-600">{day.condition}</div>
-                </div>
-              ))}
+            <div className="p-3 rounded-lg bg-green-500">
+              <MapIcon className="w-6 h-6 text-white" />
             </div>
           </div>
         </div>
-      )}
+        <div className="card-hover">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">My Crops</p>
+              <p className="text-2xl font-bold text-gray-900">{crops.length}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-blue-500">
+              <ChartBarIcon className="w-6 h-6 text-white" />
+            </div>
+          </div>
+        </div>
+        <div className="card-hover">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">My Equipment</p>
+              <p className="text-2xl font-bold text-gray-900">{equipment.length}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-purple-500">
+              <CogIcon className="w-6 h-6 text-white" />
+            </div>
+          </div>
+        </div>
+        <div className="card-hover">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Sustainability Score</p>
+              <p className="text-2xl font-bold text-gray-900">{analyticsData.sustainabilityScore || 0}%</p>
+            </div>
+            <div className="p-3 rounded-lg bg-emerald-500">
+              <SparklesIcon className="w-6 h-6 text-white" />
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Crop Distribution */}
+        <div className="card">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Crop Distribution</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={Object.entries(analyticsData.cropDistribution || {}).map(([name, value]) => ({ name, value }))}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {(Object.entries(analyticsData.cropDistribution || {})).map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={["#22c55e", "#3b82f6", "#8b5cf6", "#f59e0b"][index % 4]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        {/* Regional Land Distribution */}
+        <div className="card">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Regional Land Distribution</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={analyticsData.regionalData || []}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="region" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="landArea" fill="#22c55e" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+      {/* Recent Activity */}
+      <div className="card mb-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+        <div className="space-y-4">
+          {/* Example: Show recent land/crop updates for this farmer */}
+          {myLand.slice(0, 5).map(land => (
+            <div key={land.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                  <MapIcon className="w-4 h-4 text-green-600" />
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900">{land.name} Updated</p>
+                <p className="text-sm text-gray-600">Area: {land.area} acres, Crop: {land.crop}</p>
+                <div className="flex items-center mt-1 text-xs text-gray-500">
+                  <span>{new Date(land.lastUpdated).toLocaleDateString()}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Quick Actions */}
+      <div className="card mb-8">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <button className="flex items-center justify-center p-4 border-2 border-green-200 rounded-lg hover:border-green-300 hover:bg-green-50 transition-colors">
+            <MapIcon className="w-6 h-6 text-green-600 mr-2" />
+            <span className="font-medium text-green-700">Add Land Record</span>
+          </button>
+          <button className="flex items-center justify-center p-4 border-2 border-purple-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-colors">
+            <BuildingOfficeIcon className="w-6 h-6 text-purple-600 mr-2" />
+            <span className="font-medium text-purple-700">Contact Government</span>
+          </button>
+          <button className="flex items-center justify-center p-4 border-2 border-emerald-200 rounded-lg hover:border-emerald-300 hover:bg-emerald-50 transition-colors">
+            <CurrencyDollarIcon className="w-6 h-6 text-emerald-600 mr-2" />
+            <span className="font-medium text-emerald-700">Apply for Subsidy</span>
+          </button>
+          <button className="flex items-center justify-center p-4 border-2 border-blue-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors">
+            <ChartBarIcon className="w-6 h-6 text-blue-600 mr-2" />
+            <span className="font-medium text-blue-700">Generate Report</span>
+          </button>
+        </div>
+      </div>
 
       {/* Navigation Tabs */}
       <div className="border-b border-gray-200">
@@ -263,7 +439,8 @@ const FarmerPortal = () => {
             { id: 'overview', name: 'Overview', icon: ChartBarIcon },
             { id: 'crops', name: 'Crop Management', icon: MapIcon },
             { id: 'equipment', name: 'Equipment', icon: CogIcon },
-            { id: 'resources', name: 'Resources', icon: DocumentTextIcon }
+            { id: 'resources', name: 'Resources', icon: DocumentTextIcon },
+            { id: 'finance', name: 'Financial Report', icon: CurrencyDollarIcon }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -328,29 +505,18 @@ const FarmerPortal = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <button
-                  onClick={() => setActiveTab('crops')}
+                  onClick={() => setShowAddCrop(true)}
                   className="flex items-center justify-center p-4 border-2 border-green-200 rounded-lg hover:border-green-300 hover:bg-green-50 transition-colors"
                 >
                   <MapIcon className="w-6 h-6 text-green-600 mr-2" />
                   <span className="font-medium text-green-700">Add Crop</span>
                 </button>
                 <button
-                  onClick={() => setActiveTab('equipment')}
+                  onClick={() => setShowAddEquipment(true)}
                   className="flex items-center justify-center p-4 border-2 border-blue-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
                 >
                   <CogIcon className="w-6 h-6 text-blue-600 mr-2" />
                   <span className="font-medium text-blue-700">Manage Equipment</span>
-                </button>
-                <button
-                  onClick={() => setActiveTab('resources')}
-                  className="flex items-center justify-center p-4 border-2 border-purple-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-colors"
-                >
-                  <DocumentTextIcon className="w-6 h-6 text-purple-600 mr-2" />
-                  <span className="font-medium text-purple-700">View Resources</span>
-                </button>
-                <button className="flex items-center justify-center p-4 border-2 border-emerald-200 rounded-lg hover:border-emerald-300 hover:bg-emerald-50 transition-colors">
-                  <CurrencyDollarIcon className="w-6 h-6 text-emerald-600 mr-2" />
-                  <span className="font-medium text-emerald-700">Financial Report</span>
                 </button>
               </div>
             </div>
@@ -372,7 +538,7 @@ const FarmerPortal = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockCrops.map((crop) => (
+              {crops.map((crop) => (
                 <div key={crop.id} className="card-hover">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="font-semibold text-gray-900">{crop.name}</h4>
@@ -382,6 +548,12 @@ const FarmerPortal = () => {
                       </button>
                       <button className="p-1 text-gray-400 hover:text-blue-600">
                         <PencilIcon className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCrop(crop.name)}
+                        className="p-1 text-red-400 hover:text-red-600"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M18 6L6 18M6 6l12 12"/></svg>
                       </button>
                     </div>
                   </div>
@@ -529,30 +701,30 @@ const FarmerPortal = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockEquipment.map((equipment) => (
-                <div key={equipment.id} className="card-hover">
+              {equipment.map((item) => (
+                <div key={item.id} className="card-hover">
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-semibold text-gray-900">{equipment.name}</h4>
+                    <h4 className="font-semibold text-gray-900">{item.name}</h4>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      equipment.status === 'active' 
+                      item.status === 'active' 
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-yellow-100 text-yellow-800'
                     }`}>
-                      {equipment.status}
+                      {item.status}
                     </span>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Type:</span>
-                      <span className="text-sm font-medium">{equipment.type}</span>
+                      <span className="text-sm font-medium">{item.type}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Purchase Date:</span>
-                      <span className="text-sm font-medium">{equipment.purchaseDate}</span>
+                      <span className="text-sm font-medium">{item.purchaseDate}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Next Maintenance:</span>
-                      <span className="text-sm font-medium">{equipment.maintenanceDate}</span>
+                      <span className="text-sm font-medium">{item.maintenanceDate}</span>
                     </div>
                   </div>
                   <div className="mt-4 flex space-x-2">
@@ -657,7 +829,7 @@ const FarmerPortal = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockResources.map((resource) => (
+              {resources.map((resource) => (
                 <div key={resource.id} className="card-hover">
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -695,7 +867,140 @@ const FarmerPortal = () => {
             </div>
           </div>
         )}
+
+        {/* Financial Report Tab */}
+        {activeTab === 'finance' && (
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Report</h3>
+            {financialLoading ? (
+              <div>Loading financial report...</div>
+            ) : financialReport ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  <div className="card text-center">
+                    <div className="text-sm text-gray-500">Total Income</div>
+                    <div className="text-2xl font-bold text-green-600">${financialReport.totalIncome.toLocaleString()}</div>
+                  </div>
+                  <div className="card text-center">
+                    <div className="text-sm text-gray-500">Total Expenses</div>
+                    <div className="text-2xl font-bold text-red-600">${financialReport.totalExpenses.toLocaleString()}</div>
+                  </div>
+                  <div className="card text-center">
+                    <div className="text-sm text-gray-500">Balance</div>
+                    <div className="text-2xl font-bold text-blue-600">${financialReport.balance.toLocaleString()}</div>
+                  </div>
+                </div>
+                {/* Chart: Income vs Expenses by Month */}
+                <div className="card mb-6">
+                  <h4 className="font-semibold mb-2">Income vs Expenses by Month</h4>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart
+                      data={(() => {
+                        // Group transactions by month
+                        const byMonth = {};
+                        financialReport.transactions.forEach(tx => {
+                          const d = new Date(tx.date);
+                          const key = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}`;
+                          if (!byMonth[key]) byMonth[key] = { month: key, income: 0, expense: 0 };
+                          if (tx.type === 'income') byMonth[key].income += tx.amount;
+                          if (tx.type === 'expense') byMonth[key].expense += tx.amount;
+                        });
+                        return Object.values(byMonth).sort((a, b) => a.month.localeCompare(b.month));
+                      })()}
+                      margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="income" fill="#22c55e" name="Income" />
+                      <Bar dataKey="expense" fill="#ef4444" name="Expense" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                {/* Table of Transactions */}
+                <div className="card overflow-x-auto">
+                  <h4 className="font-semibold mb-2">Transactions</h4>
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr>
+                        <th className="px-2 py-1 text-left">Date</th>
+                        <th className="px-2 py-1 text-left">Type</th>
+                        <th className="px-2 py-1 text-left">Amount</th>
+                        <th className="px-2 py-1 text-left">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {financialReport.transactions.map(tx => (
+                        <tr key={tx._id}>
+                          <td className="px-2 py-1">{new Date(tx.date).toLocaleDateString()}</td>
+                          <td className="px-2 py-1 capitalize">{tx.type}</td>
+                          <td className={`px-2 py-1 font-medium ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>{tx.amount.toLocaleString()}</td>
+                          <td className="px-2 py-1">{tx.description}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              <div>No financial data available.</div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Help & Support Modal */}
+      <Dialog.Root open={supportOpen} onOpenChange={setSupportOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/40 z-50" />
+          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg p-6 w-full max-w-lg z-50">
+            <Dialog.Title className="text-xl font-bold mb-4">Help & Support</Dialog.Title>
+            <div className="mb-6">
+              <h4 className="font-semibold mb-2">Frequently Asked Questions</h4>
+              <ul className="list-disc pl-5 text-gray-700 text-sm space-y-1">
+                <li>How do I add a new crop? — Use the Crop Management tab and click 'Add New Crop'.</li>
+                <li>How do I update my equipment? — Go to the Equipment tab and click 'Add Equipment'.</li>
+                <li>How do I view my financial report? — Open the Financial Report tab for details and charts.</li>
+                <li>Need more help? Use the form below to contact support.</li>
+              </ul>
+            </div>
+            <form onSubmit={handleSupportSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Subject</label>
+                <input
+                  type="text"
+                  name="subject"
+                  value={supportForm.subject}
+                  onChange={handleSupportChange}
+                  className="w-full border rounded px-3 py-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Message</label>
+                <textarea
+                  name="message"
+                  value={supportForm.message}
+                  onChange={handleSupportChange}
+                  className="w-full border rounded px-3 py-2 min-h-[80px]"
+                  required
+                />
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={supportLoading}
+                >
+                  {supportLoading ? 'Sending...' : 'Send Request'}
+                </button>
+              </div>
+            </form>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 };

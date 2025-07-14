@@ -216,6 +216,107 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  // Crop management
+  const fetchCrops = async (farmerId) => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`/api/farmers/${farmerId}`,
+        { headers: { Authorization: `Bearer ${token}` } });
+      // Assuming crops are in response.data.farmDetails.crops
+      return response.data.farmDetails?.crops || [];
+    } catch (error) {
+      setError('Failed to fetch crops');
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addCrop = async (farmerId, crop) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`/api/farmers/${farmerId}/crops`, { crop }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return { success: true };
+    } catch (error) {
+      setError('Failed to add crop');
+      return { success: false, error: error.response?.data?.message };
+    }
+  };
+
+  const deleteCrop = async (farmerId, crop) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`/api/farmers/${farmerId}/crops/${encodeURIComponent(crop)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return { success: true };
+    } catch (error) {
+      setError('Failed to delete crop');
+      return { success: false, error: error.response?.data?.message };
+    }
+  };
+
+  // Equipment management
+  const fetchEquipment = async (farmerId) => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`/api/farmers/${farmerId}`,
+        { headers: { Authorization: `Bearer ${token}` } });
+      // Assuming equipment is in response.data.farmDetails.equipment
+      return response.data.farmDetails?.equipment || [];
+    } catch (error) {
+      setError('Failed to fetch equipment');
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addEquipment = async (farmerId, equipment) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`/api/farmers/${farmerId}/equipment`, { equipment }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return { success: true };
+    } catch (error) {
+      setError('Failed to add equipment');
+      return { success: false, error: error.response?.data?.message };
+    }
+  };
+
+  // Resources (static for now, can be replaced with backend fetch)
+  const fetchResources = async () => {
+    // Replace with backend call if available
+    return [
+      {
+        id: 1,
+        title: 'Sustainable Farming Guide',
+        type: 'PDF',
+        description: 'Comprehensive guide to sustainable farming practices',
+        url: '#'
+      },
+      {
+        id: 2,
+        title: 'Crop Disease Prevention',
+        type: 'Video',
+        description: 'Learn how to prevent common crop diseases',
+        url: '#'
+      },
+      {
+        id: 3,
+        title: 'Government Subsidies 2024',
+        type: 'Document',
+        description: 'Updated information on available subsidies',
+        url: '#'
+      }
+    ];
+  };
+
   const addLandRecord = async (landData) => {
     try {
       const token = localStorage.getItem('token');
@@ -244,6 +345,22 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  const fetchFinancialReport = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get('/api/finance/report', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      setError('Failed to fetch financial report');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const value = {
     landData,
     farmerData,
@@ -253,9 +370,17 @@ export const DataProvider = ({ children }) => {
     error,
     fetchLandData,
     fetchFarmerData,
+    fetchGovernmentData,
     fetchAnalyticsData,
     addLandRecord,
-    updateLandRecord
+    updateLandRecord,
+    fetchCrops,
+    addCrop,
+    deleteCrop,
+    fetchEquipment,
+    addEquipment,
+    fetchResources,
+    fetchFinancialReport
   };
 
   return (

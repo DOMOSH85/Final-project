@@ -99,6 +99,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Add a helper to check user role
+  const hasRole = (role) => {
+    if (!user || !user.role) return false;
+    if (Array.isArray(role)) {
+      return role.includes(user.role);
+    }
+    return user.role === role;
+  };
+
   const value = {
     user,
     loading,
@@ -107,7 +116,8 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateProfile,
-    checkAuthStatus
+    checkAuthStatus,
+    hasRole, // Expose role checker
   };
 
   return (

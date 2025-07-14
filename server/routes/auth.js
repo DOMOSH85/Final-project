@@ -14,7 +14,7 @@ router.post('/register', [
   body('name', 'Name is required').not().isEmpty(),
   body('email', 'Please include a valid email').isEmail(),
   body('password', 'Please enter a password with 6 or more characters').isLength({ min: 6 }),
-  body('role', 'Role is required').isIn(['farmer', 'government', 'admin']),
+  body('role', 'Role is required').isIn(['farmer', 'government', 'admin', 'analyst']),
 ], async (req, res) => {
   try {
     const errors = validationResult(req);

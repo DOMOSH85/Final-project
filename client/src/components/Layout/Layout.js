@@ -47,7 +47,7 @@ const Layout = () => {
       <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className={'lg:pl-64'}>
         {/* Header */}
         <Header onMenuClick={() => setSidebarOpen(true)} />
 

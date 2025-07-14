@@ -22,7 +22,28 @@ const Login = () => {
     
     if (result.success) {
       toast.success('Login successful!');
-      navigate('/');
+      // Redirect based on role
+      const user = JSON.parse(localStorage.getItem('user')) || result.user;
+      if (user && user.role) {
+        switch (user.role) {
+          case 'farmer':
+            navigate('/farmer-portal');
+            break;
+          case 'government':
+            navigate('/government-portal');
+            break;
+          case 'analyst':
+            navigate('/analyst-portal');
+            break;
+          case 'admin':
+            navigate('/admin-portal');
+            break;
+          default:
+            navigate('/');
+        }
+      } else {
+        navigate('/');
+      }
     } else {
       toast.error(result.error || 'Login failed');
     }

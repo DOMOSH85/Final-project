@@ -1,6 +1,9 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const auth = require('../middleware/auth');
+const SupportRequest = require('../models/SupportRequest');
+const Notification = require('../models/Notification');
+const nodemailer = require('nodemailer');
 
 const router = express.Router();
 
@@ -278,6 +281,117 @@ router.get('/announcements', auth, async (req, res) => {
     ];
 
     res.json(announcements);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/communication/support
+// @desc    Submit a support/help request
+// @access  Private
+router.post('/support', auth, async (req, res) => {
+  try {
+    const { subject, message } = req.body;
+    if (!subject || !message) {
+      return res.status(400).json({ message: 'Subject and message are required' });
+    }
+    const supportRequest = new SupportRequest({
+      user: req.user.id,
+      subject,
+      message
+    });
+    await supportRequest.save();
+    await Notification.create({
+      type: 'support',
+      message: `New support request from ${req.user.id}`,
+      user: null, // null means for all admins/staff
+      relatedId: supportRequest._id,
+      read: false
+    });
+    // Emit Socket.IO event
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('support:new', {
+        id: supportRequest._id,
+        subject: supportRequest.subject,
+        user: req.user.id,
+        createdAt: supportRequest.createdAt
+      });
+    }
+    // Send email alert to admin
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER || 'your-email@gmail.com',
+        pass: process.env.EMAIL_PASS || 'your-app-password'
+      }
+    });
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER || 'your-email@gmail.com',
+      to: adminEmail,
+      subject: `New Support Request: ${subject}`,
+      text: `User: ${req.user.id}\nSubject: ${subject}\nMessage: ${message}`
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// GET all support requests (admin/staff only)
+router.get('/support', auth, async (req, res) => {
+  try {
+    if (!['admin', 'staff'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    const requests = await SupportRequest.find().populate('user', 'name email role').sort({ createdAt: -1 });
+    res.json(requests);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update a support request (admin/staff only)
+router.put('/support/:id', auth, async (req, res) => {
+  try {
+    if (!['admin', 'staff'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    const { status, response } = req.body;
+    const update = {};
+    if (status) update.status = status;
+    if (response) update.response = response;
+    const supportRequest = await SupportRequest.findByIdAndUpdate(
+      req.params.id,
+      { $set: update },
+      { new: true }
+    );
+    if (!supportRequest) return res.status(404).json({ message: 'Support request not found' });
+    res.json(supportRequest);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// GET notifications for admin/staff
+router.get('/notifications', auth, async (req, res) => {
+  try {
+    if (!['admin', 'staff'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    const notifications = await Notification.find({
+      $or: [
+        { user: null },
+        { user: req.user.id }
+      ],
+      read: false
+    }).sort({ createdAt: -1 });
+    res.json(notifications);
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ message: 'Server error' });
