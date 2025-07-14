@@ -16,7 +16,7 @@ import {
 import toast from 'react-hot-toast';
 
 const LandMapping = () => {
-  const { addLandRecord } = useData();
+  const { landData, addLandRecord } = useData();
   const [selectedLand, setSelectedLand] = useState(null);
   const [showAddLand, setShowAddLand] = useState(false);
   const [filterType, setFilterType] = useState('all');
@@ -32,47 +32,13 @@ const LandMapping = () => {
     notes: ''
   });
 
-  const mockLandParcels = [
-    {
-      id: 1,
-      name: 'North Field',
-      area: 150,
-      cropType: 'Wheat',
-      soilType: 'Loamy',
-      status: 'active',
-      coordinates: [40.7128, -74.0060],
-      lastUpdated: '2024-01-15',
-      yield: 85,
-      irrigation: 'Sprinkler',
-      owner: 'John Smith'
-    },
-    {
-      id: 2,
-      name: 'South Meadow',
-      area: 200,
-      cropType: 'Corn',
-      soilType: 'Clay',
-      status: 'active',
-      coordinates: [40.7589, -73.9851],
-      lastUpdated: '2024-01-14',
-      yield: 92,
-      irrigation: 'Drip',
-      owner: 'Sarah Johnson'
-    },
-    {
-      id: 3,
-      name: 'East Valley',
-      area: 300,
-      cropType: 'Soybeans',
-      soilType: 'Sandy',
-      status: 'planning',
-      coordinates: [40.7505, -73.9934],
-      lastUpdated: '2024-01-13',
-      yield: 78,
-      irrigation: 'Flood',
-      owner: 'Mike Davis'
-    }
-  ];
+  // Use real backend data
+  const filteredLand = landData.filter(land => {
+    const matchesSearch = land.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (land.cropType || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = filterType === 'all' || land.status === filterType;
+    return matchesSearch && matchesFilter;
+  });
 
   const soilTypes = [
     { type: 'Loamy', quality: 'Excellent', ph: 6.5, nutrients: 'High' },
@@ -107,13 +73,6 @@ const LandMapping = () => {
       toast.error('Failed to add land parcel');
     }
   };
-
-  const filteredLand = mockLandParcels.filter(land => {
-    const matchesSearch = land.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         land.cropType.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterType === 'all' || land.status === filterType;
-    return matchesSearch && matchesFilter;
-  });
 
   return (
     <div className="space-y-6">
@@ -195,7 +154,7 @@ const LandMapping = () => {
                 <h4 className="text-lg font-semibold text-gray-900 mb-2">Interactive Map</h4>
                 <p className="text-gray-600 mb-4">Click on land parcels to view details</p>
                 <div className="flex justify-center space-x-4">
-                  {mockLandParcels.map((land, index) => (
+                  {filteredLand.map((land, index) => (
                     <button
                       key={land.id}
                       onClick={() => setSelectedLand(land)}

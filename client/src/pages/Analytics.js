@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-// import { useData } from '../contexts/DataContext';
+import { useData } from '../contexts/DataContext';
 import {
   ChartBarIcon,
   ArrowTrendingUpIcon,
@@ -17,31 +17,14 @@ import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Toolti
 import toast from 'react-hot-toast';
 
 const Analytics = () => {
+  const { analyticsData } = useData();
   const [timeRange, setTimeRange] = useState('month');
   const [selectedMetric, setSelectedMetric] = useState('land');
 
-  const mockChartData = [
-    { month: 'Jan', landArea: 1200, farmers: 145, revenue: 45000, yield: 85 },
-    { month: 'Feb', landArea: 1250, farmers: 152, revenue: 48000, yield: 87 },
-    { month: 'Mar', landArea: 1300, farmers: 158, revenue: 52000, yield: 89 },
-    { month: 'Apr', landArea: 1350, farmers: 165, revenue: 55000, yield: 91 },
-    { month: 'May', landArea: 1400, farmers: 172, revenue: 58000, yield: 88 },
-    { month: 'Jun', landArea: 1450, farmers: 180, revenue: 62000, yield: 92 }
-  ];
-
-  const cropDistributionData = [
-    { name: 'Wheat', value: 35, color: '#22c55e' },
-    { name: 'Corn', value: 28, color: '#3b82f6' },
-    { name: 'Soybeans', value: 22, color: '#8b5cf6' },
-    { name: 'Other', value: 15, color: '#f59e0b' }
-  ];
-
-  const regionalData = [
-    { region: 'North', landArea: 450, farmers: 45, avgYield: 88 },
-    { region: 'South', landArea: 380, farmers: 38, avgYield: 85 },
-    { region: 'East', landArea: 420, farmers: 42, avgYield: 90 },
-    { region: 'West', landArea: 320, farmers: 32, avgYield: 82 }
-  ];
+  // Use real backend data
+  const chartData = analyticsData.monthlyTrends || [];
+  const cropDistributionData = Object.entries(analyticsData.cropDistribution || {}).map(([name, value]) => ({ name, value }));
+  const regionalData = analyticsData.regionalData || [];
 
   const performanceMetrics = [
     {
@@ -183,7 +166,7 @@ const Analytics = () => {
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mockChartData}>
+              <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />

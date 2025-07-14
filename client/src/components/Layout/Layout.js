@@ -8,6 +8,7 @@ import Footer from './Footer';
 const Layout = () => {
   const { user, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const navigate = useNavigate();
 
   // Redirect to login if not authenticated
@@ -34,7 +35,7 @@ const Layout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -44,20 +45,20 @@ const Layout = () => {
       )}
 
       {/* Sidebar */}
-      <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
+      <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
 
       {/* Main content */}
-      <div className={'lg:pl-64'}>
+      <div className={sidebarCollapsed ? 'flex-1 flex flex-col lg:pl-20' : 'flex-1 flex flex-col lg:pl-64'}>
         {/* Header */}
         <Header onMenuClick={() => setSidebarOpen(true)} />
 
         {/* Page content */}
-        <main className="p-4 sm:p-6 lg:p-8">
+        <main className="p-4 sm:p-6 lg:p-8 flex-1">
           <div className="max-w-7xl mx-auto">
             <Outlet />
           </div>
         </main>
-        <Footer />
+        <Footer collapsed={sidebarCollapsed} />
       </div>
     </div>
   );

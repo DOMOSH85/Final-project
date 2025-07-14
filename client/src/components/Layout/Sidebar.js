@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useData } from '../../contexts/DataContext';
 import {
   HomeIcon,
   MapIcon,
@@ -22,39 +23,26 @@ import {
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
-const mockNotifications = [
-  {
-    id: 1,
-    title: 'New subsidy application',
-    message: 'John Smith submitted a new subsidy application',
-    time: '2 hours ago',
-    type: 'application',
-    read: false
-  },
-  {
-    id: 2,
-    title: 'Policy update',
-    message: 'Sustainable Agriculture Initiative has been updated',
-    time: '1 day ago',
-    type: 'policy',
-    read: false
-  },
-  {
-    id: 3,
-    title: 'Equipment maintenance',
-    message: 'Scheduled maintenance for irrigation systems',
-    time: '2 days ago',
-    type: 'maintenance',
-    read: true
-  }
-];
-
-const Sidebar = ({ open, setOpen }) => {
+const Sidebar = ({ open, setOpen, collapsed, setCollapsed }) => {
   const { user, logout, hasRole } = useAuth();
-  const [collapsed, setCollapsed] = useState(false);
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const { fetchNotifications } = useData();
+  const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationPanelRef = useRef(null);
+
+  // Fetch notifications from backend
+  useEffect(() => {
+    if (user && fetchNotifications) {
+      fetchNotifications(user).then(setNotifications);
+    }
+  }, [user, fetchNotifications]);
+
+  // Refetch notifications when notification panel is opened
+  useEffect(() => {
+    if (showNotifications && user && fetchNotifications) {
+      fetchNotifications(user).then(setNotifications);
+    }
+  }, [showNotifications, user, fetchNotifications]);
 
   // Count unread notifications
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -81,11 +69,16 @@ const Sidebar = ({ open, setOpen }) => {
     { name: 'Government Portal', href: '/government-portal', icon: BuildingOfficeIcon, roles: ['government'] },
     { name: 'Analyst Portal', href: '/analyst-portal', icon: ChartBarIcon, roles: ['analyst'] },
     { name: 'Admin Portal', href: '/admin-portal', icon: Cog6ToothIcon, roles: ['admin'] },
-    { name: 'Land Mapping', href: '/land-mapping', icon: MapIcon, roles: ['farmer', 'government', 'admin'] },
+    { name: 'Land Mapping', href: '/land-mapping', icon: MapIcon, roles: ['government', 'admin'] },
     { name: 'Government', href: '/government', icon: BuildingOfficeIcon, roles: ['government', 'admin'] },
-    { name: 'Analytics', href: '/analytics', icon: ChartBarIcon, roles: ['analyst', 'government', 'admin', 'farmer'] },
-    { name: 'Communication', href: '/communication', icon: ChatBubbleLeftRightIcon, roles: ['farmer', 'government', 'admin', 'analyst'] },
+    { name: 'Analytics', href: '/analytics', icon: ChartBarIcon, roles: ['analyst', 'government', 'admin'] },
+    { name: 'Communication', href: '/communication', icon: ChatBubbleLeftRightIcon, roles: ['government', 'admin', 'analyst'] },
   ];
+
+  // Only show Dashboard, Farmer Portal, and Communication for farmers
+  const filteredNavigation = user && user.role === 'farmer'
+    ? navigation.filter(item => ['Dashboard', 'Farmer Portal', 'Communication'].includes(item.name))
+    : navigation.filter(item => hasRole && hasRole(item.roles));
 
   const handleLogout = () => {
     logout();
@@ -131,7 +124,7 @@ const Sidebar = ({ open, setOpen }) => {
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2">
             <div className="text-xs font-semibold text-green-700 uppercase tracking-wider mb-2 pl-2">Navigation</div>
-            {navigation.filter(item => hasRole && hasRole(item.roles)).map((item) => (
+            {filteredNavigation.map((item) => (
               <NavLink
                 key={item.name}
                 to={item.href}

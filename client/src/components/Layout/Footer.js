@@ -31,9 +31,19 @@ const socialLinks = [
   },
 ];
 
-export default function Footer() {
+export default function Footer({ collapsed }) {
+  // Responsive left margin for sticky footer on desktop
+  const leftMargin = collapsed ? 'lg:left-20' : 'lg:left-64';
+  const width = collapsed ? 'lg:w-[calc(100%-5rem)]' : 'lg:w-[calc(100%-16rem)]';
   return (
-    <footer className="bg-black bg-opacity-80 text-gray-200 py-8 mt-auto border-t border-green-800">
+    <footer
+      className={`bg-black bg-opacity-80 text-gray-200 py-8 border-t border-green-800 w-full fixed bottom-0 left-0 z-30 ${leftMargin} ${width}`}
+      style={{
+        // fallback for browsers that don't support arbitrary width classes
+        width: '100%',
+        transition: 'left 0.3s,width 0.3s',
+      }}
+    >
       <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="text-center md:text-left">
           <div className="text-green-400 font-bold text-xl mb-2">GreenLands</div>

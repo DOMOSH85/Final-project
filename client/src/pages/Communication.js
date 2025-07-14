@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ChatBubbleLeftRightIcon,
   BellIcon,
@@ -13,113 +13,37 @@ import {
   CogIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
+import { useData } from '../contexts/DataContext';
 
 const Communication = () => {
+  const { user } = useAuth();
+  const { fetchContacts, fetchMessages, fetchNotifications } = useData();
   const [activeTab, setActiveTab] = useState('messages');
   const [selectedContact, setSelectedContact] = useState(null);
   const [messageText, setMessageText] = useState('');
   const [showNewMessage, setShowNewMessage] = useState(false);
+  const [contacts, setContacts] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [notifications, setNotifications] = useState([]);
 
-  const mockContacts = [
-    {
-      id: 1,
-      name: 'John Smith',
-      role: 'Farmer',
-      avatar: 'JS',
-      lastMessage: 'Thanks for the subsidy information!',
-      lastMessageTime: '2 hours ago',
-      unread: 2,
-      online: true
-    },
-    {
-      id: 2,
-      name: 'Sarah Johnson',
-      role: 'Farmer',
-      avatar: 'SJ',
-      lastMessage: 'When will the new policy be implemented?',
-      lastMessageTime: '1 day ago',
-      unread: 0,
-      online: false
-    },
-    {
-      id: 3,
-      name: 'Mike Davis',
-      role: 'Government Official',
-      avatar: 'MD',
-      lastMessage: 'Please review the latest agricultural report.',
-      lastMessageTime: '3 days ago',
-      unread: 1,
-      online: true
-    },
-    {
-      id: 4,
-      name: 'Agricultural Department',
-      role: 'Government',
-      avatar: 'AD',
-      lastMessage: 'New subsidy applications are now open.',
-      lastMessageTime: '1 week ago',
-      unread: 0,
-      online: false
+  useEffect(() => {
+    if (user) {
+      fetchContacts && fetchContacts(user).then(setContacts);
+      fetchNotifications && fetchNotifications(user).then(setNotifications);
     }
-  ];
+  }, [user, fetchContacts, fetchNotifications]);
 
-  const mockMessages = [
-    {
-      id: 1,
-      sender: 'John Smith',
-      message: 'Hi! I have a question about the new crop insurance program.',
-      timestamp: '10:30 AM',
-      isOwn: false
-    },
-    {
-      id: 2,
-      sender: 'You',
-      message: 'Hello John! I\'d be happy to help. What specific information do you need?',
-      timestamp: '10:32 AM',
-      isOwn: true
-    },
-    {
-      id: 3,
-      sender: 'John Smith',
-      message: 'I want to know if my wheat crop is eligible for coverage.',
-      timestamp: '10:35 AM',
-      isOwn: false
-    },
-    {
-      id: 4,
-      sender: 'You',
-      message: 'Yes, wheat crops are eligible. Let me send you the application form.',
-      timestamp: '10:37 AM',
-      isOwn: true
+  useEffect(() => {
+    if (selectedContact && fetchMessages) {
+      fetchMessages(selectedContact, user).then(setMessages);
     }
-  ];
+  }, [selectedContact, user, fetchMessages]);
 
-  const mockNotifications = [
-    {
-      id: 1,
-      title: 'New subsidy application',
-      message: 'John Smith submitted a new subsidy application',
-      time: '2 hours ago',
-      type: 'application',
-      read: false
-    },
-    {
-      id: 2,
-      title: 'Policy update',
-      message: 'Sustainable Agriculture Initiative has been updated',
-      time: '1 day ago',
-      type: 'policy',
-      read: false
-    },
-    {
-      id: 3,
-      title: 'Equipment maintenance',
-      message: 'Scheduled maintenance for irrigation systems',
-      time: '2 days ago',
-      type: 'maintenance',
-      read: true
-    }
-  ];
+  // Role-based filtering for privacy (if needed, but backend should already filter)
+  let filteredContacts = contacts;
+  let filteredMessages = messages;
+  let filteredNotifications = notifications;
 
   const handleSendMessage = () => {
     if (messageText.trim()) {
@@ -203,7 +127,7 @@ const Communication = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  {mockContacts.map((contact) => (
+                  {filteredContacts.map((contact) => (
                     <div
                       key={contact.id}
                       className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors ${
@@ -270,7 +194,7 @@ const Communication = () => {
 
                     {/* Messages */}
                     <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                      {mockMessages.map((message) => (
+                      {filteredMessages.map((message) => (
                         <div
                           key={message.id}
                           className={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}
@@ -338,7 +262,7 @@ const Communication = () => {
             </div>
 
             <div className="space-y-4">
-              {mockNotifications.map((notification) => (
+              {filteredNotifications.map((notification) => (
                 <div
                   key={notification.id}
                   className={`card-hover ${!notification.read ? 'bg-blue-50' : ''}`}
@@ -386,7 +310,7 @@ const Communication = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockContacts.map((contact) => (
+              {filteredContacts.map((contact) => (
                 <div key={contact.id} className="card-hover">
                   <div className="flex items-center space-x-3">
                     <div className="relative">
@@ -431,7 +355,7 @@ const Communication = () => {
                 </label>
                 <select className="input-field" required>
                   <option value="">Select recipient</option>
-                  {mockContacts.map((contact) => (
+                  {filteredContacts.map((contact) => (
                     <option key={contact.id} value={contact.id}>
                       {contact.name} ({contact.role})
                     </option>
