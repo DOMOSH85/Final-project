@@ -37,7 +37,7 @@ export default function Footer({ collapsed }) {
   const width = collapsed ? 'lg:w-[calc(100%-5rem)]' : 'lg:w-[calc(100%-16rem)]';
   return (
     <footer
-      className={`bg-black bg-opacity-80 text-gray-200 py-8 border-t border-green-800 w-full fixed bottom-0 left-0 z-30 ${leftMargin} ${width}`}
+      className={`bg-black bg-opacity-80 text-gray-200 py-8 border-t border-green-800 w-full ${leftMargin} ${width}`}
       style={{
         // fallback for browsers that don't support arbitrary width classes
         width: '100%',

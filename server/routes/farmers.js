@@ -2,6 +2,8 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const auth = require('../middleware/auth');
 const User = require('../models/User');
+const { Parser } = require('json2csv');
+const Land = require('../models/Land');
 
 const router = express.Router();
 
@@ -261,6 +263,37 @@ router.post('/:id/equipment', auth, [
     }
 
     res.json(farmer.select('-password'));
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// GET /api/farmers/:id/report - Generate CSV report for a farmer
+router.get('/:id/report', auth, async (req, res) => {
+  try {
+    if (req.user.id !== req.params.id && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    const farmer = await User.findById(req.params.id).select('name email farmDetails');
+    if (!farmer) return res.status(404).json({ message: 'Farmer not found' });
+    const lands = await Land.find({ farmer: req.params.id });
+    // Prepare CSV data
+    const csvData = lands.map(land => ({
+      Farmer: farmer.name,
+      Email: farmer.email,
+      LandName: land.name,
+      Area: land.area,
+      Crop: land.crop,
+      SoilType: land.soilType,
+      Status: land.status,
+      LastUpdated: land.lastUpdated
+    }));
+    const parser = new Parser();
+    const csv = parser.parse(csvData);
+    res.header('Content-Type', 'text/csv');
+    res.attachment(`farmer_report_${farmer.name.replace(/\s+/g, '_')}.csv`);
+    return res.send(csv);
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ message: 'Server error' });

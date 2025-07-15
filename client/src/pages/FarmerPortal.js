@@ -68,6 +68,91 @@ const FarmerPortal = () => {
   const [supportOpen, setSupportOpen] = useState(false);
   const [supportForm, setSupportForm] = useState({ subject: '', message: '' });
   const [supportLoading, setSupportLoading] = useState(false);
+  // Add Land Record modal state and form
+  const [showAddLand, setShowAddLand] = useState(false);
+  const [landForm, setLandForm] = useState({
+    name: '',
+    area: '',
+    crop: '',
+    soilType: '',
+    coordinates: ['', '']
+  });
+  const [addLandLoading, setAddLandLoading] = useState(false);
+  // Contact Government modal state and form
+  const [showContactGov, setShowContactGov] = useState(false);
+  const [govContacts, setGovContacts] = useState([]);
+  const [contactGovForm, setContactGovForm] = useState({ recipientId: '', subject: '', content: '' });
+  const [contactGovLoading, setContactGovLoading] = useState(false);
+  // Apply for Subsidy modal state and logic
+  const [showApplySubsidy, setShowApplySubsidy] = useState(false);
+  const [subsidies, setSubsidies] = useState([]);
+  const [selectedSubsidy, setSelectedSubsidy] = useState('');
+  const [applySubsidyLoading, setApplySubsidyLoading] = useState(false);
+  const [applicationNote, setApplicationNote] = useState('');
+  // Generate Report logic
+  const [reportLoading, setReportLoading] = useState(false);
+  const handleGenerateReport = async () => {
+    if (!user || !user.id) return;
+    setReportLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/farmers/${user.id}/report`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to generate report');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `farmer_report_${user.name.replace(/\s+/g, '_')}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Report downloaded!');
+    } catch (err) {
+      toast.error('Failed to generate report');
+    }
+    setReportLoading(false);
+  };
+
+  const handleLandFormChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'coordinates0' || name === 'coordinates1') {
+      const idx = name === 'coordinates0' ? 0 : 1;
+      setLandForm({ ...landForm, coordinates: landForm.coordinates.map((c, i) => i === idx ? value : c) });
+    } else {
+      setLandForm({ ...landForm, [name]: value });
+    }
+  };
+
+  const handleAddLandSubmit = async (e) => {
+    e.preventDefault();
+    setAddLandLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/land', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...landForm,
+          area: parseFloat(landForm.area),
+          coordinates: landForm.coordinates.map(Number)
+        })
+      });
+      if (!res.ok) throw new Error('Failed to add land record');
+      toast.success('Land record added!');
+      setShowAddLand(false);
+      setLandForm({ name: '', area: '', crop: '', soilType: '', coordinates: ['', ''] });
+      // Optionally refetch land data here if needed
+    } catch (err) {
+      toast.error('Failed to add land record');
+    }
+    setAddLandLoading(false);
+  };
 
   // Mock weather data
   useEffect(() => {
@@ -183,8 +268,188 @@ const FarmerPortal = () => {
     setSupportLoading(false);
   };
 
+  const openContactGov = async () => {
+    setShowContactGov(true);
+    // Fetch government contacts only when opening modal
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/communication/contacts', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setGovContacts(data.filter(u => u.role === 'government'));
+    } catch (err) {
+      toast.error('Failed to load government contacts');
+    }
+  };
+
+  const handleContactGovChange = (e) => {
+    setContactGovForm({ ...contactGovForm, [e.target.name]: e.target.value });
+  };
+
+  const handleContactGovSubmit = async (e) => {
+    e.preventDefault();
+    setContactGovLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/communication/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(contactGovForm)
+      });
+      if (!res.ok) throw new Error('Failed to send message');
+      toast.success('Message sent to government!');
+      setShowContactGov(false);
+      setContactGovForm({ recipientId: '', subject: '', content: '' });
+    } catch (err) {
+      toast.error('Failed to send message');
+    }
+    setContactGovLoading(false);
+  };
+
+  const openApplySubsidy = async () => {
+    setShowApplySubsidy(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/subsidies', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setSubsidies(Array.isArray(data) ? data : []);
+    } catch (err) {
+      toast.error('Failed to load subsidies');
+    }
+  };
+
+  const handleApplySubsidy = async (e) => {
+    e.preventDefault();
+    setApplySubsidyLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/subsidies/apply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          subsidyId: selectedSubsidy,
+          applicationData: { note: applicationNote }
+        })
+      });
+      if (!res.ok) throw new Error('Failed to apply for subsidy');
+      toast.success('Subsidy application submitted!');
+      setShowApplySubsidy(false);
+      setSelectedSubsidy('');
+      setApplicationNote('');
+    } catch (err) {
+      toast.error('Failed to apply for subsidy');
+    }
+    setApplySubsidyLoading(false);
+  };
+
   return (
     <div className="space-y-6">
+      {/* Quick Actions */}
+      <div className="card mb-8">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <button className="flex items-center justify-center p-4 border-2 border-green-200 rounded-lg hover:border-green-300 hover:bg-green-50 transition-colors" onClick={() => setShowAddLand(true)}>
+            <MapIcon className="w-6 h-6 text-green-600 mr-2" />
+            <span className="font-medium text-green-700">Add Land Record</span>
+          </button>
+          <button className="flex items-center justify-center p-4 border-2 border-purple-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-colors" onClick={openContactGov}>
+            <BuildingOfficeIcon className="w-6 h-6 text-purple-600 mr-2" />
+            <span className="font-medium text-purple-700">Contact Government</span>
+          </button>
+          <button className="flex items-center justify-center p-4 border-2 border-emerald-200 rounded-lg hover:border-emerald-300 hover:bg-emerald-50 transition-colors" onClick={openApplySubsidy}>
+            <CurrencyDollarIcon className="w-6 h-6 text-emerald-600 mr-2" />
+            <span className="font-medium text-emerald-700">Apply for Subsidy</span>
+          </button>
+          <button className="flex items-center justify-center p-4 border-2 border-blue-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors" onClick={handleGenerateReport} disabled={reportLoading || !user || !user.id}>
+            <ChartBarIcon className="w-6 h-6 text-blue-600 mr-2" />
+            <span className="font-medium text-blue-700">{reportLoading ? 'Generating...' : 'Generate Report'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Apply for Subsidy Modal */}
+      <Dialog.Root open={showApplySubsidy} onOpenChange={setShowApplySubsidy}>
+        <Dialog.Overlay className="fixed inset-0 bg-black/40 z-50" />
+        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg p-6 w-full max-w-md z-50">
+          <Dialog.Description>This dialog allows you to apply for a subsidy.</Dialog.Description>
+          <Dialog.Title className="text-lg font-bold mb-4">Apply for Subsidy</Dialog.Title>
+          <form onSubmit={handleApplySubsidy} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Select Subsidy</label>
+              <select value={selectedSubsidy} onChange={e => setSelectedSubsidy(e.target.value)} className="input w-full" required>
+                <option value="">Choose a subsidy</option>
+                {(Array.isArray(subsidies) ? subsidies : []).map(sub => (
+                  <option key={sub._id} value={sub._id}>{sub.name} (Deadline: {new Date(sub.applicationDeadline).toLocaleDateString()})</option>
+                ))}
+              </select>
+            </div>
+            {selectedSubsidy && (
+              <div className="bg-gray-50 p-3 rounded border text-sm">
+                <div className="font-semibold mb-1">{subsidies.find(s => s._id === selectedSubsidy)?.name}</div>
+                <div>{subsidies.find(s => s._id === selectedSubsidy)?.description}</div>
+                <div className="mt-1 text-green-700">Eligibility: {subsidies.find(s => s._id === selectedSubsidy)?.eligibility}</div>
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium mb-1">Application Note (optional)</label>
+              <textarea value={applicationNote} onChange={e => setApplicationNote(e.target.value)} className="input w-full" rows={3} placeholder="Add any relevant info..." />
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button type="button" className="btn-secondary" onClick={() => setShowApplySubsidy(false)}>Cancel</button>
+              <button type="submit" className="btn-primary" disabled={applySubsidyLoading || !selectedSubsidy}>{applySubsidyLoading ? 'Applying...' : 'Apply'}</button>
+            </div>
+          </form>
+        </Dialog.Content>
+      </Dialog.Root>
+      {/* Add Land Record Modal */}
+      <Dialog.Root open={showAddLand} onOpenChange={setShowAddLand}>
+        <Dialog.Overlay className="fixed inset-0 bg-black/40 z-50" />
+        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg p-6 w-full max-w-md z-50">
+          <Dialog.Description>This dialog allows you to add a land record.</Dialog.Description>
+          <Dialog.Title className="text-lg font-bold mb-4">Add Land Record</Dialog.Title>
+          <form onSubmit={handleAddLandSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Name</label>
+              <input name="name" value={landForm.name} onChange={handleLandFormChange} className="input w-full" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Area (acres)</label>
+              <input name="area" type="number" min="0" step="0.01" value={landForm.area} onChange={handleLandFormChange} className="input w-full" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Crop</label>
+              <input name="crop" value={landForm.crop} onChange={handleLandFormChange} className="input w-full" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Soil Type</label>
+              <input name="soilType" value={landForm.soilType} onChange={handleLandFormChange} className="input w-full" required />
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-1">Latitude</label>
+                <input name="coordinates0" value={landForm.coordinates[0]} onChange={handleLandFormChange} className="input w-full" required />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-1">Longitude</label>
+                <input name="coordinates1" value={landForm.coordinates[1]} onChange={handleLandFormChange} className="input w-full" required />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button type="button" className="btn-secondary" onClick={() => setShowAddLand(false)}>Cancel</button>
+              <button type="submit" className="btn-primary" disabled={addLandLoading}>{addLandLoading ? 'Adding...' : 'Add Land'}</button>
+            </div>
+          </form>
+        </Dialog.Content>
+      </Dialog.Root>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -320,21 +585,21 @@ const FarmerPortal = () => {
       <div className="card mb-8">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button className="flex items-center justify-center p-4 border-2 border-green-200 rounded-lg hover:border-green-300 hover:bg-green-50 transition-colors">
+          <button className="flex items-center justify-center p-4 border-2 border-green-200 rounded-lg hover:border-green-300 hover:bg-green-50 transition-colors" onClick={() => setShowAddLand(true)}>
             <MapIcon className="w-6 h-6 text-green-600 mr-2" />
             <span className="font-medium text-green-700">Add Land Record</span>
           </button>
-          <button className="flex items-center justify-center p-4 border-2 border-purple-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-colors">
+          <button className="flex items-center justify-center p-4 border-2 border-purple-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-colors" onClick={openContactGov}>
             <BuildingOfficeIcon className="w-6 h-6 text-purple-600 mr-2" />
             <span className="font-medium text-purple-700">Contact Government</span>
           </button>
-          <button className="flex items-center justify-center p-4 border-2 border-emerald-200 rounded-lg hover:border-emerald-300 hover:bg-emerald-50 transition-colors">
+          <button className="flex items-center justify-center p-4 border-2 border-emerald-200 rounded-lg hover:border-emerald-300 hover:bg-emerald-50 transition-colors" onClick={openApplySubsidy}>
             <CurrencyDollarIcon className="w-6 h-6 text-emerald-600 mr-2" />
             <span className="font-medium text-emerald-700">Apply for Subsidy</span>
           </button>
-          <button className="flex items-center justify-center p-4 border-2 border-blue-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors">
+          <button className="flex items-center justify-center p-4 border-2 border-blue-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors" onClick={handleGenerateReport} disabled={reportLoading || !user || !user.id}>
             <ChartBarIcon className="w-6 h-6 text-blue-600 mr-2" />
-            <span className="font-medium text-blue-700">Generate Report</span>
+            <span className="font-medium text-blue-700">{reportLoading ? 'Generating...' : 'Generate Report'}</span>
           </button>
         </div>
       </div>
@@ -403,28 +668,6 @@ const FarmerPortal = () => {
                     <p className="text-xs text-gray-500">2 days ago</p>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <div className="card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={() => setShowAddCrop(true)}
-                  className="flex items-center justify-center p-4 border-2 border-green-200 rounded-lg hover:border-green-300 hover:bg-green-50 transition-colors"
-                >
-                  <MapIcon className="w-6 h-6 text-green-600 mr-2" />
-                  <span className="font-medium text-green-700">Add Crop</span>
-                </button>
-                <button
-                  onClick={() => setShowAddEquipment(true)}
-                  className="flex items-center justify-center p-4 border-2 border-blue-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
-                >
-                  <CogIcon className="w-6 h-6 text-blue-600 mr-2" />
-                  <span className="font-medium text-blue-700">Manage Equipment</span>
-                </button>
               </div>
             </div>
           </div>
@@ -907,6 +1150,38 @@ const FarmerPortal = () => {
             </form>
           </Dialog.Content>
         </Dialog.Portal>
+      </Dialog.Root>
+
+      {/* Contact Government Modal */}
+      <Dialog.Root open={showContactGov} onOpenChange={setShowContactGov}>
+        <Dialog.Overlay className="fixed inset-0 bg-black/40 z-50" />
+        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg p-6 w-full max-w-md z-50">
+          <Dialog.Description>This dialog allows you to contact a government official.</Dialog.Description>
+          <Dialog.Title className="text-lg font-bold mb-4">Contact Government</Dialog.Title>
+          <form onSubmit={handleContactGovSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Recipient</label>
+              <select name="recipientId" value={contactGovForm.recipientId} onChange={handleContactGovChange} className="input w-full" required>
+                <option value="">Select government contact</option>
+                {govContacts.map(gov => (
+                  <option key={gov._id} value={gov._id}>{gov.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Subject</label>
+              <input name="subject" value={contactGovForm.subject} onChange={handleContactGovChange} className="input w-full" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Message</label>
+              <textarea name="content" value={contactGovForm.content} onChange={handleContactGovChange} className="input w-full" rows={4} required />
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button type="button" className="btn-secondary" onClick={() => setShowContactGov(false)}>Cancel</button>
+              <button type="submit" className="btn-primary" disabled={contactGovLoading}>{contactGovLoading ? 'Sending...' : 'Send'}</button>
+            </div>
+          </form>
+        </Dialog.Content>
       </Dialog.Root>
     </div>
   );

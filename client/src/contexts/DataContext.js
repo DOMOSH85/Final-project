@@ -23,9 +23,9 @@ export const DataProvider = ({ children }) => {
 
   // Fetch all data from backend on mount
   useEffect(() => {
-    if (user) {
+    if (user && user.id) {
       fetchLandData();
-      fetchFarmerData();
+      fetchFarmerData(user.id);
       fetchGovernmentData();
       fetchAnalyticsData();
     }
@@ -47,11 +47,12 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  const fetchFarmerData = async () => {
+  const fetchFarmerData = async (userId) => {
+    if (!userId) return;
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await axios.get('/api/farmers', {
+      const response = await axios.get(`/api/farmers/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setFarmerData(response.data);
@@ -98,6 +99,7 @@ export const DataProvider = ({ children }) => {
 
   // Crop management
   const fetchCrops = async (farmerId) => {
+    if (!farmerId) return [];
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
@@ -141,6 +143,7 @@ export const DataProvider = ({ children }) => {
 
   // Equipment management
   const fetchEquipment = async (farmerId) => {
+    if (!farmerId) return [];
     try {
       setLoading(true);
       const token = localStorage.getItem('token');

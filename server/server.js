@@ -50,6 +50,7 @@ app.use('/api/farmers', require('./routes/farmers'));
 app.use('/api/government', require('./routes/government'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/communication', require('./routes/communication'));
+app.use('/api/subsidies', require('./routes/subsidies'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

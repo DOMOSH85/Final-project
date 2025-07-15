@@ -45,7 +45,8 @@ const Sidebar = ({ open, setOpen, collapsed, setCollapsed }) => {
   }, [showNotifications, user, fetchNotifications]);
 
   // Count unread notifications
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const safeNotifications = Array.isArray(notifications) ? notifications : [];
+  const unreadCount = safeNotifications.filter(n => !n.read).length;
 
   // Close notification panel when clicking outside
   useEffect(() => {
@@ -86,15 +87,15 @@ const Sidebar = ({ open, setOpen, collapsed, setCollapsed }) => {
   };
 
   const handleMarkAllRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+    setNotifications(safeNotifications.map(n => ({ ...n, read: true })));
   };
 
   const handleMarkRead = (id) => {
-    setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
+    setNotifications(safeNotifications.map(n => n.id === id ? { ...n, read: true } : n));
   };
 
   const handleMarkUnread = (id) => {
-    setNotifications(notifications.map(n => n.id === id ? { ...n, read: false } : n));
+    setNotifications(safeNotifications.map(n => n.id === id ? { ...n, read: false } : n));
   };
 
   const handleClearAll = () => {

@@ -32,7 +32,8 @@ function ProtectedRoute({ allowedRoles, redirectTo = "/login", children }) {
 }
 
 function AppRoutes() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-lg">Loading...</div>;
   return (
     <Routes>
       <Route path="/login" element={<Login />} />

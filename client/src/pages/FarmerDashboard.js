@@ -50,7 +50,7 @@ const FarmerDashboard = () => {
   const myLand = landData.filter(l => l.farmer && (l.farmer._id === user.id || l.farmer === user.id));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
