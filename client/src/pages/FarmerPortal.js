@@ -14,83 +14,37 @@ import {
   EyeIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
+  BuildingOfficeIcon,
   InformationCircleIcon,
-  SparklesIcon,
-  BuildingOfficeIcon
+  SparklesIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import * as Dialog from '@radix-ui/react-dialog';
+import { useNavigate } from 'react-router-dom';
 
-const FarmerPortal = () => {
+function FarmerPortal() {
+  const navigate = useNavigate();
+  // ...existing state variables...
   const { user } = useAuth();
   const {
-    landData,
-    analyticsData,
     fetchCrops,
     addCrop,
     deleteCrop,
     fetchEquipment,
     addEquipment,
     fetchResources,
-    loading,
-    error,
-    fetchFinancialReport
+    fetchFinancialReport,
+    landData,
+    analyticsData,
+    fetchAnalyticsData,
+    fetchFarmerData,
+    fetchGovernmentData
   } = useData();
-  const [activeTab, setActiveTab] = useState('overview');
-  const [showAddCrop, setShowAddCrop] = useState(false);
-  const [showAddEquipment, setShowAddEquipment] = useState(false);
-  const [weatherData, setWeatherData] = useState(null);
-  const [cropForm, setCropForm] = useState({
-    name: '',
-    area: '',
-    cropType: '',
-    plantingDate: '',
-    expectedHarvest: '',
-    notes: ''
-  });
-  const [equipmentForm, setEquipmentForm] = useState({
-    name: '',
-    type: '',
-    purchaseDate: '',
-    maintenanceDate: '',
-    status: 'active'
-  });
-  // Farmer-specific data
-  const myLand = landData.filter(l => l.farmer && (l.farmer._id === user.id || l.farmer === user.id));
+  // Helper: My Land and Area
+  const myLand = landData.filter(l => l.farmer && (l.farmer._id === user?.id || l.farmer === user?.id));
   const myLandArea = myLand.reduce((sum, l) => sum + (l.area || 0), 0);
-  const [crops, setCrops] = useState([]);
-  const [equipment, setEquipment] = useState([]);
-  const [resources, setResources] = useState([]);
-  const [dataLoading, setDataLoading] = useState(true);
-  const [financialReport, setFinancialReport] = useState(null);
-  const [financialLoading, setFinancialLoading] = useState(false);
-  const [supportOpen, setSupportOpen] = useState(false);
-  const [supportForm, setSupportForm] = useState({ subject: '', message: '' });
-  const [supportLoading, setSupportLoading] = useState(false);
-  // Add Land Record modal state and form
-  const [showAddLand, setShowAddLand] = useState(false);
-  const [landForm, setLandForm] = useState({
-    name: '',
-    area: '',
-    crop: '',
-    soilType: '',
-    coordinates: ['', '']
-  });
-  const [addLandLoading, setAddLandLoading] = useState(false);
-  // Contact Government modal state and form
-  const [showContactGov, setShowContactGov] = useState(false);
-  const [govContacts, setGovContacts] = useState([]);
-  const [contactGovForm, setContactGovForm] = useState({ recipientId: '', subject: '', content: '' });
-  const [contactGovLoading, setContactGovLoading] = useState(false);
-  // Apply for Subsidy modal state and logic
-  const [showApplySubsidy, setShowApplySubsidy] = useState(false);
-  const [subsidies, setSubsidies] = useState([]);
-  const [selectedSubsidy, setSelectedSubsidy] = useState('');
-  const [applySubsidyLoading, setApplySubsidyLoading] = useState(false);
-  const [applicationNote, setApplicationNote] = useState('');
-  // Generate Report logic
-  const [reportLoading, setReportLoading] = useState(false);
+  // Helper: Generate Report
   const handleGenerateReport = async () => {
     if (!user || !user.id) return;
     setReportLoading(true);
@@ -115,76 +69,54 @@ const FarmerPortal = () => {
     }
     setReportLoading(false);
   };
-
-  const handleLandFormChange = (e) => {
-    const { name, value } = e.target;
-    if (name === 'coordinates0' || name === 'coordinates1') {
-      const idx = name === 'coordinates0' ? 0 : 1;
-      setLandForm({ ...landForm, coordinates: landForm.coordinates.map((c, i) => i === idx ? value : c) });
-    } else {
-      setLandForm({ ...landForm, [name]: value });
-    }
-  };
-
-  const handleAddLandSubmit = async (e) => {
-    e.preventDefault();
-    setAddLandLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/land', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          ...landForm,
-          area: parseFloat(landForm.area),
-          coordinates: landForm.coordinates.map(Number)
-        })
-      });
-      if (!res.ok) throw new Error('Failed to add land record');
-      toast.success('Land record added!');
-      setShowAddLand(false);
-      setLandForm({ name: '', area: '', crop: '', soilType: '', coordinates: ['', ''] });
-      // Optionally refetch land data here if needed
-    } catch (err) {
-      toast.error('Failed to add land record');
-    }
-    setAddLandLoading(false);
-  };
-
-  // Mock weather data
-  useEffect(() => {
-    setWeatherData({
-      temperature: 24,
-      humidity: 65,
-      windSpeed: 12,
-      condition: 'Partly Cloudy',
-      forecast: [
-        { day: 'Today', temp: 24, condition: 'Partly Cloudy' },
-        { day: 'Tomorrow', temp: 26, condition: 'Sunny' },
-        { day: 'Wednesday', temp: 22, condition: 'Rainy' }
-      ]
-    });
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      setDataLoading(true);
-      Promise.all([
-        fetchCrops(user.id),
-        fetchEquipment(user.id),
-        fetchResources()
-      ]).then(([cropsData, equipmentData, resourcesData]) => {
-        setCrops(cropsData);
-        setEquipment(equipmentData);
-        setResources(resourcesData);
-        setDataLoading(false);
-      });
-    }
-  }, [user]);
-
+  const [activeTab, setActiveTab] = useState('overview');
+  const [showAddCrop, setShowAddCrop] = useState(false);
+  const [showAddEquipment, setShowAddEquipment] = useState(false);
+  const [weatherData, setWeatherData] = useState(null);
+  const [cropForm, setCropForm] = useState({
+    name: '',
+    area: '',
+    cropType: '',
+    plantingDate: '',
+    expectedHarvest: '',
+    notes: ''
+  });
+  const [equipmentForm, setEquipmentForm] = useState({
+    name: '',
+    type: '',
+    purchaseDate: '',
+    maintenanceDate: '',
+    status: 'active'
+  });
+  const [crops, setCrops] = useState([]);
+  const [equipment, setEquipment] = useState([]);
+  const [resources, setResources] = useState([]);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [financialReport, setFinancialReport] = useState(null);
+  const [financialLoading, setFinancialLoading] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [supportForm, setSupportForm] = useState({ subject: '', message: '' });
+  const [supportLoading, setSupportLoading] = useState(false);
+  const [showAddLand, setShowAddLand] = useState(false);
+  const [landForm, setLandForm] = useState({
+    name: '',
+    area: '',
+    crop: '',
+    soilType: '',
+    coordinates: ['', '']
+  });
+  const [addLandLoading, setAddLandLoading] = useState(false);
+  const [showContactGov, setShowContactGov] = useState(false);
+  const [govContacts, setGovContacts] = useState([]);
+  const [contactGovForm, setContactGovForm] = useState({ recipientId: '', subject: '', content: '' });
+  const [contactGovLoading, setContactGovLoading] = useState(false);
+  const [showApplySubsidy, setShowApplySubsidy] = useState(false);
+  const [subsidies, setSubsidies] = useState([]);
+  const [selectedSubsidy, setSelectedSubsidy] = useState('');
+  const [applySubsidyLoading, setApplySubsidyLoading] = useState(false);
+  const [applicationNote, setApplicationNote] = useState('');
+  const [reportLoading, setReportLoading] = useState(false);
+  // ...existing code...
   useEffect(() => {
     if (activeTab === 'finance' && user) {
       setFinancialLoading(true);
@@ -193,7 +125,7 @@ const FarmerPortal = () => {
         setFinancialLoading(false);
       });
     }
-  }, [activeTab, user]);
+  }, [activeTab, user, fetchAnalyticsData, fetchFarmerData, fetchGovernmentData]);
 
   const handleCropSubmit = async (e) => {
     e.preventDefault();
@@ -376,80 +308,7 @@ const FarmerPortal = () => {
         </div>
       </div>
 
-      {/* Apply for Subsidy Modal */}
-      <Dialog.Root open={showApplySubsidy} onOpenChange={setShowApplySubsidy}>
-        <Dialog.Overlay className="fixed inset-0 bg-black/40 z-50" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg p-6 w-full max-w-md z-50">
-          <Dialog.Description>This dialog allows you to apply for a subsidy.</Dialog.Description>
-          <Dialog.Title className="text-lg font-bold mb-4">Apply for Subsidy</Dialog.Title>
-          <form onSubmit={handleApplySubsidy} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Select Subsidy</label>
-              <select value={selectedSubsidy} onChange={e => setSelectedSubsidy(e.target.value)} className="input w-full" required>
-                <option value="">Choose a subsidy</option>
-                {(Array.isArray(subsidies) ? subsidies : []).map(sub => (
-                  <option key={sub._id} value={sub._id}>{sub.name} (Deadline: {new Date(sub.applicationDeadline).toLocaleDateString()})</option>
-                ))}
-              </select>
-            </div>
-            {selectedSubsidy && (
-              <div className="bg-gray-50 p-3 rounded border text-sm">
-                <div className="font-semibold mb-1">{subsidies.find(s => s._id === selectedSubsidy)?.name}</div>
-                <div>{subsidies.find(s => s._id === selectedSubsidy)?.description}</div>
-                <div className="mt-1 text-green-700">Eligibility: {subsidies.find(s => s._id === selectedSubsidy)?.eligibility}</div>
-              </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium mb-1">Application Note (optional)</label>
-              <textarea value={applicationNote} onChange={e => setApplicationNote(e.target.value)} className="input w-full" rows={3} placeholder="Add any relevant info..." />
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <button type="button" className="btn-secondary" onClick={() => setShowApplySubsidy(false)}>Cancel</button>
-              <button type="submit" className="btn-primary" disabled={applySubsidyLoading || !selectedSubsidy}>{applySubsidyLoading ? 'Applying...' : 'Apply'}</button>
-            </div>
-          </form>
-        </Dialog.Content>
-      </Dialog.Root>
-      {/* Add Land Record Modal */}
-      <Dialog.Root open={showAddLand} onOpenChange={setShowAddLand}>
-        <Dialog.Overlay className="fixed inset-0 bg-black/40 z-50" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg p-6 w-full max-w-md z-50">
-          <Dialog.Description>This dialog allows you to add a land record.</Dialog.Description>
-          <Dialog.Title className="text-lg font-bold mb-4">Add Land Record</Dialog.Title>
-          <form onSubmit={handleAddLandSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
-              <input name="name" value={landForm.name} onChange={handleLandFormChange} className="input w-full" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Area (acres)</label>
-              <input name="area" type="number" min="0" step="0.01" value={landForm.area} onChange={handleLandFormChange} className="input w-full" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Crop</label>
-              <input name="crop" value={landForm.crop} onChange={handleLandFormChange} className="input w-full" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Soil Type</label>
-              <input name="soilType" value={landForm.soilType} onChange={handleLandFormChange} className="input w-full" required />
-            </div>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-1">Latitude</label>
-                <input name="coordinates0" value={landForm.coordinates[0]} onChange={handleLandFormChange} className="input w-full" required />
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-1">Longitude</label>
-                <input name="coordinates1" value={landForm.coordinates[1]} onChange={handleLandFormChange} className="input w-full" required />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <button type="button" className="btn-secondary" onClick={() => setShowAddLand(false)}>Cancel</button>
-              <button type="submit" className="btn-primary" disabled={addLandLoading}>{addLandLoading ? 'Adding...' : 'Add Land'}</button>
-            </div>
-          </form>
-        </Dialog.Content>
-      </Dialog.Root>
+      {/* Removed modals for Add Land, Apply Subsidy, Add Crop, Add Equipment, Contact Government, View Resource. All actions now use navigation. */}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -679,7 +538,7 @@ const FarmerPortal = () => {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Crop Management</h3>
               <button
-                onClick={() => setShowAddCrop(true)}
+                onClick={() => navigate('/add-crop')}
                 className="btn-primary flex items-center space-x-2"
               >
                 <PlusIcon className="w-4 h-4" />
@@ -842,7 +701,7 @@ const FarmerPortal = () => {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Equipment Management</h3>
               <button
-                onClick={() => setShowAddEquipment(true)}
+                onClick={() => navigate('/add-equipment')}
                 className="btn-primary flex items-center space-x-2"
               >
                 <PlusIcon className="w-4 h-4" />
@@ -989,7 +848,7 @@ const FarmerPortal = () => {
                   </div>
                   <h4 className="font-semibold text-gray-900 mb-2">{resource.title}</h4>
                   <p className="text-sm text-gray-600 mb-4">{resource.description}</p>
-                  <button className="btn-primary w-full">
+                  <button className="btn-primary w-full" onClick={() => navigate('/view-resource')}>
                     View Resource
                   </button>
                 </div>
@@ -1004,14 +863,14 @@ const FarmerPortal = () => {
                     <h5 className="font-medium text-green-900">Subsidy Application</h5>
                     <p className="text-sm text-green-700">Apply for agricultural subsidies</p>
                   </div>
-                  <button className="btn-primary">Apply Now</button>
+                  <button className="btn-primary" onClick={() => navigate('/apply-subsidy')}>Apply Now</button>
                 </div>
                 <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
                   <div>
                     <h5 className="font-medium text-blue-900">Technical Support</h5>
                     <p className="text-sm text-blue-700">Get expert farming advice</p>
                   </div>
-                  <button className="btn-primary">Contact Expert</button>
+                  <button className="btn-primary" onClick={() => navigate('/contact-government')}>Contact Expert</button>
                 </div>
               </div>
             </div>

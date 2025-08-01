@@ -7,10 +7,10 @@ import { ResponsiveContainer, PieChart, Pie, Tooltip, BarChart, CartesianGrid, X
 const AdminPortal = () => {
   const { user } = useAuth();
   const { analyticsData, farmerData, governmentData, fetchFarmerData, fetchGovernmentData } = useData();
-  useEffect(() => {
+    useEffect(() => {
     fetchFarmerData();
     fetchGovernmentData();
-  }, []);
+    }, [user, fetchFarmerData, fetchGovernmentData]);
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">

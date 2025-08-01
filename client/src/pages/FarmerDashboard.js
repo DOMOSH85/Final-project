@@ -34,7 +34,7 @@ const FarmerDashboard = () => {
       fetchCrops && fetchCrops(user.id);
       fetchEquipment && fetchEquipment(user.id);
     }
-  }, [user]);
+  }, [user, fetchCrops, fetchEquipment, fetchLandData]);
 
   useEffect(() => {
     if (user) {
@@ -44,7 +44,7 @@ const FarmerDashboard = () => {
         setFinancialLoading(false);
       });
     }
-  }, [user]);
+  }, [user, fetchFinancialReport]);
 
   // Filter land records for this farmer
   const myLand = landData.filter(l => l.farmer && (l.farmer._id === user.id || l.farmer === user.id));
