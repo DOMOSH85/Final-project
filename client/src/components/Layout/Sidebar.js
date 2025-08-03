@@ -71,7 +71,6 @@ const Sidebar = ({ open, setOpen, collapsed, setCollapsed }) => {
     { name: 'Analyst Portal', href: '/analyst-portal', icon: ChartBarIcon, roles: ['analyst'] },
     { name: 'Admin Portal', href: '/admin-portal', icon: Cog6ToothIcon, roles: ['admin'] },
     { name: 'Land Mapping', href: '/land-mapping', icon: MapIcon, roles: ['government', 'admin'] },
-    { name: 'Government', href: '/government', icon: BuildingOfficeIcon, roles: ['government', 'admin'] },
     { name: 'Analytics', href: '/analytics', icon: ChartBarIcon, roles: ['analyst', 'government', 'admin'] },
     { name: 'Communication', href: '/communication', icon: ChatBubbleLeftRightIcon, roles: ['government', 'admin', 'analyst'] },
   ];

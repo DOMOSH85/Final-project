@@ -39,6 +39,24 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/" element={user ? <Layout /> : <Home />} />
+      {/* Make /farmer-portal a top-level route so it always matches */}
+      <Route
+        path="/farmer-portal"
+        element={
+          <ProtectedRoute allowedRoles={["farmer"]}>
+            <FarmerPortal />
+          </ProtectedRoute>
+        }
+      />
+      {/* Add /government-portal as a top-level route */}
+      <Route
+        path="/government-portal"
+        element={
+          <ProtectedRoute allowedRoles={["government"]}>
+            <GovernmentPortal />
+          </ProtectedRoute>
+        }
+      />
       {user && (
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
@@ -50,38 +68,8 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="farmer-portal"
-            element={
-              <ProtectedRoute allowedRoles={["farmer"]}>
-                <FarmerPortal />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="farmer-dashboard"
-            element={
-              <ProtectedRoute allowedRoles={["farmer"]}>
-                <FarmerDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="government"
-            element={
-              <ProtectedRoute allowedRoles={["government", "admin"]}>
-                <GovernmentDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="government-dashboard"
-            element={
-              <ProtectedRoute allowedRoles={["government"]}>
-                <GovernmentDashboard />
-              </ProtectedRoute>
-            }
-          />
+
+      {/* Removed /government and /government-dashboard routes. Use /government-portal only. */}
           <Route
             path="analyst-dashboard"
             element={

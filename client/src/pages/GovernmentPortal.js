@@ -1,83 +1,132 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
-import { BuildingOfficeIcon, DocumentTextIcon, CurrencyDollarIcon, UserGroupIcon, CalendarIcon, ChartBarIcon } from '@heroicons/react/24/outline';
-import { PieChart, Pie, Sector, Cell, ResponsiveContainer, Tooltip, BarChart, XAxis, YAxis, CartesianGrid, Bar } from 'recharts';
+import { BuildingOfficeIcon, DocumentTextIcon, CurrencyDollarIcon, UserGroupIcon, CalendarIcon, ChartBarIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, XAxis, YAxis, CartesianGrid, Bar } from 'recharts';
+import Layout from '../components/Layout/Layout';
+import DepartmentModal from '../components/Modals/DepartmentModal';
+import PolicyModal from '../components/Modals/PolicyModal';
+import SubsidyModal from '../components/Modals/SubsidyModal';
 
 const GovernmentPortal = () => {
   const { user } = useAuth();
-  const { governmentData, analyticsData, fetchGovernmentData, fetchAnalyticsData } = useData();
+
+  const { governmentData, analyticsData, fetchGovernmentData, fetchAnalyticsData, fetchPolicies, fetchSubsidies, loading, error } = useData();
+  // Local state for modals and selected items
+  const [showDeptModal, setShowDeptModal] = useState(false);
+  const [editDept, setEditDept] = useState(null);
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [editPolicy, setEditPolicy] = useState(null);
+  const [showSubsidyModal, setShowSubsidyModal] = useState(false);
+  const [editSubsidy, setEditSubsidy] = useState(null);
+  const [policies, setPolicies] = useState([]);
+  const [subsidies, setSubsidies] = useState([]);
+
   useEffect(() => {
     fetchGovernmentData();
     fetchAnalyticsData();
-  }, [fetchGovernmentData, fetchAnalyticsData]);
+    fetchPolicies().then(setPolicies);
+    fetchSubsidies().then(setSubsidies);
+  }, [fetchGovernmentData, fetchAnalyticsData, fetchPolicies, fetchSubsidies]);
+
+  // Handlers for Department
+  const handleAddDept = () => { setEditDept(null); setShowDeptModal(true); };
+  const handleEditDept = (dept) => { setEditDept(dept); setShowDeptModal(true); };
+  const handleDeleteDept = (dept) => { /* TODO: delete from backend */ };
+  const handleDeptSubmit = (data) => {
+    // TODO: call backend to add or update
+    setShowDeptModal(false);
+    setEditDept(null);
+  };
+  // Handlers for Policy
+  const handleAddPolicy = () => { setEditPolicy(null); setShowPolicyModal(true); };
+  const handleEditPolicy = (policy) => { setEditPolicy(policy); setShowPolicyModal(true); };
+  const handleDeletePolicy = (policy) => { /* TODO: delete from backend */ };
+  const handlePolicySubmit = (data) => {
+    // TODO: call backend to add or update
+    setShowPolicyModal(false);
+    setEditPolicy(null);
+  };
+  // Handlers for Subsidy
+  const handleAddSubsidy = () => { setEditSubsidy(null); setShowSubsidyModal(true); };
+  const handleEditSubsidy = (subsidy) => { setEditSubsidy(subsidy); setShowSubsidyModal(true); };
+  const handleDeleteSubsidy = (subsidy) => { /* TODO: delete from backend */ };
+  const handleSubsidySubmit = (data) => {
+    // TODO: call backend to add or update
+    setShowSubsidyModal(false);
+    setEditSubsidy(null);
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Government Portal</h1>
-          <p className="text-gray-600">Welcome, {user?.name || 'Official'}</p>
+    <Layout>
+      <div className="space-y-6">
+        {loading && <div className="text-center py-8 text-gray-500">Loading...</div>}
+        {error && <div className="text-center py-2 text-red-600">{error}</div>}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Government Portal</h1>
+            <p className="text-gray-600">Welcome, {user?.name || 'Official'}</p>
+          </div>
+          <div className="flex items-center space-x-2 text-sm text-gray-500">
+            <CalendarIcon className="w-4 h-4" />
+            <span>{new Date().toLocaleDateString()}</span>
+          </div>
         </div>
-        <div className="flex items-center space-x-2 text-sm text-gray-500">
-          <CalendarIcon className="w-4 h-4" />
-          <span>{new Date().toLocaleDateString()}</span>
-        </div>
-      </div>
-      {/* Government Dashboard Features */}
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <div className="card-hover">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Departments</p>
-              <p className="text-2xl font-bold text-gray-900">{governmentData.length}</p>
+        {/* Government Dashboard Features */}
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="card-hover">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Departments</p>
+                <p className="text-2xl font-bold text-gray-900">{governmentData.length}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-blue-500">
+                <UserGroupIcon className="w-6 h-6 text-white" />
+              </div>
             </div>
-            <div className="p-3 rounded-lg bg-blue-500">
-              <UserGroupIcon className="w-6 h-6 text-white" />
+          </div>
+          <div className="card-hover">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Policies</p>
+                <p className="text-2xl font-bold text-gray-900">{governmentData.reduce((sum, d) => sum + (d.policies || 0), 0)}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-purple-500">
+                <DocumentTextIcon className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </div>
+          <div className="card-hover">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Active Subsidies</p>
+                <p className="text-2xl font-bold text-gray-900">{governmentData.reduce((sum, d) => sum + (d.activeSubsidies || 0), 0)}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-green-500">
+                <CurrencyDollarIcon className="w-6 h-6 text-white" />
+              </div>
+            </div>
+          </div>
+          <div className="card-hover">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Regions</p>
+                <p className="text-2xl font-bold text-gray-900">{(analyticsData.regionalData && analyticsData.regionalData.length) || 0}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-emerald-500">
+                <ChartBarIcon className="w-6 h-6 text-white" />
+              </div>
             </div>
           </div>
         </div>
-        <div className="card-hover">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Policies</p>
-              <p className="text-2xl font-bold text-gray-900">{governmentData.reduce((sum, d) => sum + (d.policies || 0), 0)}</p>
-            </div>
-            <div className="p-3 rounded-lg bg-purple-500">
-              <DocumentTextIcon className="w-6 h-6 text-white" />
-            </div>
-          </div>
-        </div>
-        <div className="card-hover">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Active Subsidies</p>
-              <p className="text-2xl font-bold text-gray-900">{governmentData.reduce((sum, d) => sum + (d.activeSubsidies || 0), 0)}</p>
-            </div>
-            <div className="p-3 rounded-lg bg-green-500">
-              <CurrencyDollarIcon className="w-6 h-6 text-white" />
-            </div>
-          </div>
-        </div>
-        <div className="card-hover">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Regions</p>
-              <p className="text-2xl font-bold text-gray-900">{(analyticsData.regionalData && analyticsData.regionalData.length) || 0}</p>
-            </div>
-            <div className="p-3 rounded-lg bg-emerald-500">
-              <ChartBarIcon className="w-6 h-6 text-white" />
-            </div>
-          </div>
-        </div>
-      </div>
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Crop Distribution */}
-        <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Crop Distribution</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Crop Distribution */}
+          <div className="card">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Crop Distribution</h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={Object.entries(analyticsData.cropDistribution || {}).map(([name, value]) => ({ name, value }))}
@@ -160,39 +209,136 @@ const GovernmentPortal = () => {
         </div>
       </div>
       {/* Government Functionalities */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-        {/* Department Management */}
-        <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Department Management</h3>
-          <p className="text-gray-600">Add, view, and manage government departments.</p>
-          {/* TODO: Department management table/component */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+          {/* Department Management */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Department Management</h3>
+              <button className="btn-primary" onClick={handleAddDept}>Add Department</button>
+            </div>
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="p-2 text-left">Department</th>
+                  <th className="p-2 text-left">Policies</th>
+                  <th className="p-2 text-left">Active Subsidies</th>
+                  <th className="p-2 text-left">Contact</th>
+                  <th className="p-2 text-left">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {governmentData.map((dept) => (
+                  <tr key={dept.id} className="border-b">
+                    <td className="p-2">{dept.department}</td>
+                    <td className="p-2">{dept.policies}</td>
+                    <td className="p-2">{dept.activeSubsidies}</td>
+                    <td className="p-2">{dept.contact}</td>
+                    <td className="p-2 flex space-x-2">
+                      <button onClick={() => handleEditDept(dept)} className="text-blue-600 hover:underline"><PencilIcon className="w-4 h-4 inline" /></button>
+                      <button onClick={() => handleDeleteDept(dept)} className="text-red-600 hover:underline"><TrashIcon className="w-4 h-4 inline" /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Policy Management */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Policy Management</h3>
+              <button className="btn-primary" onClick={handleAddPolicy}>Add Policy</button>
+            </div>
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="p-2 text-left">Name</th>
+                  <th className="p-2 text-left">Description</th>
+                  <th className="p-2 text-left">Department</th>
+                  <th className="p-2 text-left">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {policies.map((policy, idx) => (
+                  <tr key={idx} className="border-b">
+                    <td className="p-2">{policy.name}</td>
+                    <td className="p-2">{policy.description}</td>
+                    <td className="p-2">{policy.department}</td>
+                    <td className="p-2 flex space-x-2">
+                      <button onClick={() => handleEditPolicy(policy)} className="text-blue-600 hover:underline"><PencilIcon className="w-4 h-4 inline" /></button>
+                      <button onClick={() => handleDeletePolicy(policy)} className="text-red-600 hover:underline"><TrashIcon className="w-4 h-4 inline" /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Subsidy Management */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Subsidy Management</h3>
+              <button className="btn-primary" onClick={handleAddSubsidy}>Add Subsidy</button>
+            </div>
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="p-2 text-left">Name</th>
+                  <th className="p-2 text-left">Amount</th>
+                  <th className="p-2 text-left">Deadline</th>
+                  <th className="p-2 text-left">Description</th>
+                  <th className="p-2 text-left">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {subsidies.map((subsidy, idx) => (
+                  <tr key={idx} className="border-b">
+                    <td className="p-2">{subsidy.name}</td>
+                    <td className="p-2">{subsidy.amount}</td>
+                    <td className="p-2">{subsidy.deadline}</td>
+                    <td className="p-2">{subsidy.description}</td>
+                    <td className="p-2 flex space-x-2">
+                      <button onClick={() => handleEditSubsidy(subsidy)} className="text-blue-600 hover:underline"><PencilIcon className="w-4 h-4 inline" /></button>
+                      <button onClick={() => handleDeleteSubsidy(subsidy)} className="text-red-600 hover:underline"><TrashIcon className="w-4 h-4 inline" /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Regional Analytics */}
+          <div className="card">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Regional Analytics</h3>
+            <p className="text-gray-600">View analytics and reports by region.</p>
+            {/* Example: Table of regional data */}
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="p-2 text-left">Region</th>
+                  <th className="p-2 text-left">Land Area</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(analyticsData.regionalData || []).map((region, idx) => (
+                  <tr key={idx} className="border-b">
+                    <td className="p-2">{region.region}</td>
+                    <td className="p-2">{region.landArea}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Support */}
+          <div className="card">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Support</h3>
+            <p className="text-gray-600">Request help or contact support for assistance.</p>
+            {/* TODO: Support request form/component */}
+          </div>
         </div>
-        {/* Policy Management */}
-        <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Policy Management</h3>
-          <p className="text-gray-600">Create, edit, and review agricultural policies.</p>
-          {/* TODO: Policy management table/component */}
-        </div>
-        {/* Subsidy Management */}
-        <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Subsidy Management</h3>
-          <p className="text-gray-600">Track and manage subsidies for farmers.</p>
-          {/* TODO: Subsidy management table/component */}
-        </div>
-        {/* Regional Analytics */}
-        <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Regional Analytics</h3>
-          <p className="text-gray-600">View analytics and reports by region.</p>
-          {/* TODO: Regional analytics component */}
-        </div>
-        {/* Support */}
-        <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Support</h3>
-          <p className="text-gray-600">Request help or contact support for assistance.</p>
-          {/* TODO: Support request form/component */}
-        </div>
-      </div>
+        {/* Modals for add/edit */}
+        <DepartmentModal open={showDeptModal} onClose={() => { setShowDeptModal(false); setEditDept(null); }} onSubmit={handleDeptSubmit} initialData={editDept} />
+        <PolicyModal open={showPolicyModal} onClose={() => { setShowPolicyModal(false); setEditPolicy(null); }} onSubmit={handlePolicySubmit} initialData={editPolicy} />
+        <SubsidyModal open={showSubsidyModal} onClose={() => { setShowSubsidyModal(false); setEditSubsidy(null); }} onSubmit={handleSubsidySubmit} initialData={editSubsidy} />
     </div>
+    </Layout>
   );
 };
 

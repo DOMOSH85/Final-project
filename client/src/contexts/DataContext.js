@@ -5,6 +5,7 @@ import { useAuth } from './AuthContext';
 const DataContext = createContext();
 
 export const useData = () => {
+  // Fetch policies from backend
   const context = useContext(DataContext);
   if (!context) {
     throw new Error('useData must be used within a DataProvider');
@@ -21,15 +22,50 @@ export const DataProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch all data from backend on mount
-  useEffect(() => {
-    if (user && user.id) {
-      fetchLandData();
-      fetchFarmerData(user.id);
-      fetchGovernmentData();
-      fetchAnalyticsData();
-    }
-  }, [user]);
+
+// Fetch all data from backend on mount
+useEffect(() => {
+  if (user && user.id) {
+    fetchLandData();
+    fetchFarmerData(user.id);
+    fetchGovernmentData();
+    fetchAnalyticsData();
+  }
+}, [user]);
+
+// Fetch policies from backend
+const fetchPolicies = async () => {
+  try {
+    setLoading(true);
+    const token = localStorage.getItem('token');
+    const response = await axios.get('/api/government/policies', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  } catch (error) {
+    setError('Failed to fetch policies');
+    return [];
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Fetch subsidies from backend
+const fetchSubsidies = async () => {
+  try {
+    setLoading(true);
+    const token = localStorage.getItem('token');
+    const response = await axios.get('/api/subsidies', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  } catch (error) {
+    setError('Failed to fetch subsidies');
+    return [];
+  } finally {
+    setLoading(false);
+  }
+};
 
   const fetchLandData = async () => {
     try {
@@ -279,7 +315,9 @@ export const DataProvider = ({ children }) => {
     addEquipment,
     fetchResources,
     fetchFinancialReport,
-    fetchNotifications // <-- add this
+    fetchNotifications,
+    fetchPolicies,
+    fetchSubsidies
   };
 
   return (
